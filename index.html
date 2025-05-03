@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard France & PACA</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            border-bottom: 3px solid #2c3e50;
+            font-weight: bold;
+        }
+        .tab:hover:not(.active) {
+            border-bottom: 3px solid #ddd;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            width: 48%;
+        }
+        select, .radio-group {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        .radio-group {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+        }
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .chart {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .half-width {
+            width: 48%;
+        }
+        .third-width {
+            width: 32%;
+        }
+        .region-info {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .data-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .data-table th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: bold;
+        }
+        .data-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .data-table tr.selected {
+            background-color: #e6f7ff;
+            font-weight: bold;
+        }
+        .table-container {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            .controls, .chart-container {
+                flex-direction: column;
+            }
+            .control-group, .half-width, .third-width {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+            .data-table th, .data-table td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Dashboard: Données démographique France métroplitaine et de la région PACA</h1>
+        <h2 class="subtitle">Analyses démographiques et comparaisons régionales</h2>
+        <p>Sélectionnez un onglet pour voir les données régionales, de PACA ou les données démographiques de France métropolitaine</p>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="france">Données Régionales</div>
+        <div class="tab" data-tab="paca">Données PACA</div>
+        <div class="tab" data-tab="demographie">Données démographiques France métropolitaine</div>
+        <div class="tab" data-tab="indicateurs">Indicateurs démographiques</div>
+    </div>
+
+    <!-- Contenu France -->
+    <div id="france-content" class="tab-content active">
+        <div class="controls">
+            <div class="control-group">
+                <select id="france-metric-selector">
+                    <option value="PTOT">Population Totale</option>
+                    <option value="PMUN">Population Municipale</option>
+                    <option value="NBARR">Nombre d'Arrondissements</option>
+                    <option value="NBCAN">Nombre de Cantons</option>
+                    <option value="NBCOM">Nombre de Communes</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="france-original" name="france-sort" value="original" checked>
+                        <label for="france-original">Ordre Original</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="france-asc" name="france-sort" value="asc">
+                        <label for="france-asc">Tri Ascendant</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="france-desc" name="france-sort" value="desc">
+                        <label for="france-desc">Tri Descendant</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="france-bar-chart" class="chart"></div>
+
+        <div class="chart-container">
+            <div id="france-map" class="chart half-width"></div>
+            <div id="france-pie-chart" class="chart half-width"></div>
+        </div>
+
+        <div id="france-scatter-plot" class="chart"></div>
+
+        <div class="table-container">
+            <table id="france-table" class="data-table">
+                <thead>
+                    <tr>
+                        <th>Région</th>
+                        <th>Code</th>
+                        <th>Arrondissements</th>
+                        <th>Cantons</th>
+                        <th>Communes</th>
+                        <th>Pop. Municipale</th>
+                        <th>Pop. Totale</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="france-region-details" class="region-info" style="display: none;">
+            <h3>Détails de la Région</h3>
+            <div id="france-region-content"></div>
+        </div>
+    </div>
+
+    <!-- Contenu PACA -->
+    <div id="paca-content" class="tab-content">
+        <div class="controls">
+            <div class="control-group">
+                <select id="paca-metric-selector">
+                    <option value="pop_municipale">Population Municipale</option>
+                    <option value="pop_totale">Population Totale</option>
+                    <option value="pop_ville">Population (Ville Centre)</option>
+                    <option value="communes">Nombre de Communes</option>
+                    <option value="densite">Densité (hab/km²)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="paca-original" name="paca-sort" value="original" checked>
+                        <label for="paca-original">Ordre Original</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="paca-asc" name="paca-sort" value="asc">
+                        <label for="paca-asc">Tri Ascendant</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="paca-desc" name="paca-sort" value="desc">
+                        <label for="paca-desc">Tri Descendant</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="paca-bar-chart" class="chart"></div>
+
+        <div class="chart-container">
+            <div id="paca-map" class="chart half-width"></div>
+            <div id="paca-pie-chart" class="chart half-width"></div>
+        </div>
+
+        <div id="paca-scatter-plot" class="chart"></div>
+
+        <div class="table-container">
+            <table id="paca-table" class="data-table">
+                <thead>
+                    <tr>
+                        <th>Arrondissement</th>
+                        <th>Communes</th>
+                        <th>Pop. Municipale</th>
+                        <th>Pop. Totale</th>
+                        <th>Pop. Ville</th>
+                        <th>Densité</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="paca-region-details" class="region-info" style="display: none;">
+            <h3>Détails de l'Arrondissement</h3>
+            <div id="paca-region-content"></div>
+        </div>
+    </div>
+
+    <!-- Contenu Démographie -->
+    <div id="demographie-content" class="tab-content">
+        <div class="controls">
+            <div class="control-group">
+                <select id="demographie-metric-selector">
+                    <option value="population">Population totale</option>
+                    <option value="naissances">Naissances</option>
+                    <option value="deces">Décès</option>
+                    <option value="solde_naturel">Solde naturel</option>
+                    <option value="solde_migratoire">Solde migratoire</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="demographie-line" name="demographie-type" value="line" checked>
+                        <label for="demographie-line">Courbe</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="demographie-bar" name="demographie-type" value="bar">
+                        <label for="demographie-bar">Barres</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="demographie-main-chart" class="chart"></div>
+
+        <div class="chart-container">
+            <div id="demographie-comparison-chart" class="chart half-width"></div>
+            <div id="demographie-stacked-chart" class="chart half-width"></div>
+        </div>
+
+        <div class="table-container">
+            <table id="demographie-table" class="data-table">
+                <thead>
+                    <tr>
+                        <th>Année</th>
+                        <th>Population</th>
+                        <th>Naissances</th>
+                        <th>Décès</th>
+                        <th>Solde Naturel</th>
+                        <th>Solde Migratoire</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Contenu Indicateurs démographiques -->
+    <div id="indicateurs-content" class="tab-content">
+        <div class="controls">
+            <div class="control-group">
+                <select id="indicateurs-metric-selector">
+                    <option value="taux">Taux de natalité/mortalité/nuptialité</option>
+                    <option value="repartition">Répartition par tranche d'âge</option>
+                    <option value="comparaison">Comparaison des taux</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="indicateurs-line" name="indicateurs-type" value="line" checked>
+                        <label for="indicateurs-line">Courbe</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="indicateurs-bar" name="indicateurs-type" value="bar">
+                        <label for="indicateurs-bar">Barres</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="indicateurs-main-chart" class="chart"></div>
+
+        <div class="chart-container">
+            <div id="indicateurs-secondary-chart" class="chart half-width"></div>
+            <div id="indicateurs-stacked-chart" class="chart half-width"></div>
+        </div>
+
+        <div class="table-container">
+            <table id="indicateurs-table" class="data-table">
+                <thead>
+                    <tr>
+                        <th>Année</th>
+                        <th>Taux Natalité</th>
+                        <th>Taux Mortalité</th>
+                        <th>Taux Nuptialité</th>
+                        <th>0-19 ans</th>
+                        <th>20-59 ans</th>
+                        <th>60-64 ans</th>
+                        <th>65+ ans</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Données France
+        const franceData = [
+            {REG: "01", Région: "Guadeloupe", NBARR: 2, NBCAN: 21, NBCOM: 32, PMUN: 383569, PTOT: 388197, lat: 16.265, lon: -61.551},
+            {REG: "02", Région: "Martinique", NBARR: 4, NBCAN: 0, NBCOM: 34, PMUN: 361019, PTOT: 364991, lat: 14.641, lon: -61.024},
+            {REG: "03", Région: "Guyane", NBARR: 3, NBCAN: 0, NBCOM: 22, PMUN: 288382, PTOT: 290476, lat: 4.000, lon: -53.000},
+            {REG: "04", Région: "La Réunion", NBARR: 4, NBCAN: 25, NBCOM: 24, PMUN: 881348, PTOT: 891190, lat: -21.115, lon: 55.536},
+            {REG: "11", Région: "Île-de-France", NBARR: 25, NBCAN: 155, NBCOM: 1267, PMUN: 12380964, PTOT: 12489624, lat: 48.702, lon: 2.454},
+            {REG: "24", Région: "Centre-Val de Loire", NBARR: 20, NBCAN: 102, NBCOM: 1756, PMUN: 2581597, PTOT: 2638823, lat: 47.751, lon: 1.675},
+            {REG: "27", Région: "Bourgogne-Franche-Comté", NBARR: 24, NBCAN: 152, NBCOM: 3697, PMUN: 2803977, PTOT: 2874734, lat: 47.280, lon: 6.112},
+            {REG: "28", Région: "Normandie", NBARR: 17, NBCAN: 131, NBCOM: 2651, PMUN: 3339074, PTOT: 3408739, lat: 49.180, lon: 0.370},
+            {REG: "32", Région: "Hauts-de-France", NBARR: 26, NBCAN: 145, NBCOM: 3788, PMUN: 5998916, PTOT: 6088950, lat: 50.480, lon: 2.793},
+            {REG: "44", Région: "Grand Est", NBARR: 38, NBCAN: 200, NBCOM: 5118, PMUN: 5560079, PTOT: 5661977, lat: 48.699, lon: 6.187},
+            {REG: "52", Région: "Pays de la Loire", NBARR: 16, NBCAN: 107, NBCOM: 1232, PMUN: 3879216, PTOT: 3968665, lat: 47.763, lon: -0.329},
+            {REG: "53", Région: "Bretagne", NBARR: 15, NBCAN: 102, NBCOM: 1206, PMUN: 3422845, PTOT: 3510488, lat: 48.202, lon: -2.932},
+            {REG: "75", Région: "Nouvelle-Aquitaine", NBARR: 41, NBCAN: 258, NBCOM: 4305, PMUN: 6113384, PTOT: 6250377, lat: 45.708, lon: 0.626},
+            {REG: "76", Région: "Occitanie", NBARR: 36, NBCAN: 249, NBCOM: 4453, PMUN: 6080731, PTOT: 6202443, lat: 43.892, lon: 3.282},
+            {REG: "84", Région: "Auvergne-Rhône-Alpes", NBARR: 39, NBCAN: 241, NBCOM: 4027, PMUN: 8163884, PTOT: 8331274, lat: 45.447, lon: 4.385},
+            {REG: "93", Région: "Provence-Alpes-Côte d'Azur", NBARR: 18, NBCAN: 126, NBCOM: 946, PMUN: 5170312, PTOT: 5243778, lat: 43.935, lon: 6.067},
+            {REG: "94", Région: "Corse", NBARR: 5, NBCAN: 26, NBCOM: 360, PMUN: 351276, PTOT: 356219, lat: 42.039, lon: 9.013}
+        ];
+
+        // Données PACA
+        const pacaData = [
+            {nom: "Aix-en-Provence", communes: 48, pop_municipale: 464360, pop_totale: 473343, pop_ville: 147933, lat: 43.5278, lon: 5.4456},
+            {nom: "Apt", communes: 57, pop_municipale: 127798, pop_totale: 130171, pop_ville: 10536, lat: 43.8761, lon: 5.3964},
+            {nom: "Arlés", communes: 29, pop_municipale: 172826, pop_totale: 175534, pop_ville: 51156, lat: 43.6769, lon: 4.6286},
+            {nom: "Avignon", communes: 16, pop_municipale: 213587, pop_totale: 217137, pop_ville: 91760, lat: 43.9486, lon: 4.8083},
+            {nom: "Barcelonnette", communes: 14, pop_municipale: 7715, pop_totale: 8009, pop_ville: 2528, lat: 44.3858, lon: 6.6525},
+            {nom: "Briançon", communes: 36, pop_municipale: 33484, pop_totale: 34431, pop_ville: 10748, lat: 44.8958, lon: 6.635},
+            {nom: "Brignoles", communes: 67, pop_municipale: 190660, pop_totale: 193996, pop_ville: 17664, lat: 43.4058, lon: 6.0617},
+            {nom: "Carpentras", communes: 78, pop_municipale: 227317, pop_totale: 231954, pop_ville: 30854, lat: 44.055, lon: 5.0481},
+            {nom: "Castellane", communes: 41, pop_municipale: 11417, pop_totale: 11661, pop_ville: 1456, lat: 43.8467, lon: 6.5133},
+            {nom: "Digne-les-Bains", communes: 46, pop_municipale: 48726, pop_totale: 50305, pop_ville: 17694, lat: 44.0925, lon: 6.2356},
+            {nom: "Draguignan", communes: 54, pop_municipale: 323222, pop_totale: 328656, pop_ville: 39745, lat: 43.5394, lon: 6.4661},
+            {nom: "Forcalquier", communes: 97, pop_municipale: 99321, pop_totale: 101646, pop_ville: 5118, lat: 43.9592, lon: 5.7797},
+            {nom: "Gap", communes: 126, pop_municipale: 108193, pop_totale: 111562, pop_ville: 40656, lat: 44.5586, lon: 6.0778},
+            {nom: "Grasse", communes: 62, pop_municipale: 577803, pop_totale: 586071, pop_ville: 48323, lat: 43.6581, lon: 6.9253},
+            {nom: "Istres", communes: 21, pop_municipale: 336170, pop_totale: 339940, pop_ville: 44577, lat: 43.5142, lon: 4.9889},
+            {nom: "Marseille", communes: 21, pop_municipale: 1096455, pop_totale: 1105141, pop_ville: 877215, lat: 43.2967, lon: 5.3764},
+            {nom: "Nice", communes: 101, pop_municipale: 536776, pop_totale: 542384, pop_ville: 353701, lat: 43.7019, lon: 7.2683},
+            {nom: "Toulon", communes: 32, pop_municipale: 594482, pop_totale: 601837, pop_ville: 180452, lat: 43.125, lon: 5.9306}
+        ];
+        pacaData.forEach(arr => {
+            arr.densite = arr.pop_ville / arr.communes;
+        });
+
+        // Données Croissance Démographique
+        const demographieData = [
+            {Année: 2010, Population: 62765235, Naissances: 802224, Décès: 540469, SoldeNaturel: 261755, SoldeMigratoire: 43354, Ajustement: 0},
+            {Année: 2011, Population: 63070344, Naissances: 792996, Décès: 534795, SoldeNaturel: 258201, SoldeMigratoire: 47426, Ajustement: 0},
+            {Année: 2012, Population: 63375971, Naissances: 790290, Décès: 559227, SoldeNaturel: 231063, SoldeMigratoire: 90831, Ajustement: 0},
+            {Année: 2013, Population: 63697865, Naissances: 781621, Décès: 558408, SoldeNaturel: 223213, SoldeMigratoire: 106880, Ajustement: 0},
+            {Année: 2014, Population: 64027958, Naissances: 781167, Décès: 547003, SoldeNaturel: 234164, SoldeMigratoire: 38699, Ajustement: 0},
+            {Année: 2015, Population: 64300821, Naissances: 760421, Décès: 581770, SoldeNaturel: 178651, SoldeMigratoire: 53025, Ajustement: -63705},
+            {Année: 2016, Population: 64468792, Naissances: 744697, Décès: 581073, SoldeNaturel: 163624, SoldeMigratoire: 87964, Ajustement: -81247},
+            {Année: 2017, Population: 64639133, Naissances: 730242, Décès: 593606, SoldeNaturel: 136636, SoldeMigratoire: 166654, Ajustement: -98386},
+            {Année: 2018, Population: 64844037, Naissances: 719737, Décès: 596552, SoldeNaturel: 123185, SoldeMigratoire: 211349, Ajustement: -81803},
+            {Année: 2019, Population: 65096768, Naissances: 714029, Décès: 599408, SoldeNaturel: 114621, SoldeMigratoire: 139849, Ajustement: -82084},
+            {Année: 2020, Population: 65269154, Naissances: 696664, Décès: 654599, SoldeNaturel: 42065, SoldeMigratoire: 227847, Ajustement: -33853},
+            {Année: 2021, Population: 65505213, Naissances: 701819, Décès: 644201, SoldeNaturel: 57618, SoldeMigratoire: 193000, Ajustement: -34000},
+            {Année: 2022, Population: 65721831, Naissances: 686564, Décès: 658434, SoldeNaturel: 28130, SoldeMigratoire: 193000, Ajustement: -17000},
+            {Année: 2023, Population: 65925961, Naissances: 640000, Décès: 616000, SoldeNaturel: 24000, SoldeMigratoire: 193000, Ajustement: 0},
+            {Année: 2024, Population: 66142961, Naissances: null, Décès: null, SoldeNaturel: null, SoldeMigratoire: null, Ajustement: null}
+        ];
+
+        // Nouvelles données des CSV
+        const tauxData = [
+            {Année: 2010, "Taux de nuptialité": 3.9, "Taux de natalité": 12.8, "Taux de mortalité": 8.6, "Taux de variation naturelle": 4.2},
+            {Année: 2011, "Taux de nuptialité": 3.7, "Taux de natalité": 12.5, "Taux de mortalité": 8.5, "Taux de variation naturelle": 4.0},
+            {Année: 2012, "Taux de nuptialité": 3.8, "Taux de natalité": 12.4, "Taux de mortalité": 8.8, "Taux de variation naturelle": 3.6},
+            {Année: 2013, "Taux de nuptialité": 3.6, "Taux de natalité": 12.2, "Taux de mortalité": 8.7, "Taux de variation naturelle": 3.5},
+            {Année: 2014, "Taux de nuptialité": 3.7, "Taux de natalité": 12.2, "Taux de mortalité": 8.5, "Taux de variation naturelle": 3.7},
+            {Année: 2015, "Taux de nuptialité": 3.6, "Taux de natalité": 11.8, "Taux de mortalité": 9.0, "Taux de variation naturelle": 2.8},
+            {Année: 2016, "Taux de nuptialité": 3.5, "Taux de natalité": 11.5, "Taux de mortalité": 9.0, "Taux de variation naturelle": 2.5},
+            {Année: 2017, "Taux de nuptialité": 3.5, "Taux de natalité": 11.3, "Taux de mortalité": 9.2, "Taux de variation naturelle": 2.1},
+            {Année: 2018, "Taux de nuptialité": 3.5, "Taux de natalité": 11.1, "Taux de mortalité": 9.2, "Taux de variation naturelle": 1.9},
+            {Année: 2019, "Taux de nuptialité": 3.4, "Taux de natalité": 11.0, "Taux de mortalité": 9.2, "Taux de variation naturelle": 1.8},
+            {Année: 2020, "Taux de nuptialité": 2.3, "Taux de natalité": 10.7, "Taux de mortalité": 10.0, "Taux de variation naturelle": 0.7},
+            {Année: 2021, "Taux de nuptialité": 3.2, "Taux de natalité": 10.7, "Taux de mortalité": 9.8, "Taux de variation naturelle": 0.9},
+            {Année: 2022, "Taux de nuptialité": 3.6, "Taux de natalité": 10.4, "Taux de mortalité": 10.0, "Taux de variation naturelle": 0.4},
+            {Année: 2023, "Taux de nuptialité": 3.6, "Taux de natalité": 9.7, "Taux de mortalité": 9.3, "Taux de variation naturelle": 0.4}
+        ];
+
+        const repartitionData = [
+            {Année: 2010, "0-19 ans": 24.5, "0-14 ans": 18.4, "20-59 ans": 52.7, "60-64 ans": 6.0, "65+ ans": 16.8, "75+ ans": 8.9},
+            {Année: 2011, "0-19 ans": 24.5, "0-14 ans": 18.4, "20-59 ans": 52.2, "60-64 ans": 6.4, "65+ ans": 16.9, "75+ ans": 9.0},
+            {Année: 2012, "0-19 ans": 24.4, "0-14 ans": 18.4, "20-59 ans": 51.9, "60-64 ans": 6.4, "65+ ans": 17.3, "75+ ans": 9.1},
+            {Année: 2013, "0-19 ans": 24.4, "0-14 ans": 18.4, "20-59 ans": 51.6, "60-64 ans": 6.3, "65+ ans": 17.7, "75+ ans": 9.1},
+            {Année: 2014, "0-19 ans": 24.3, "0-14 ans": 18.4, "20-59 ans": 51.3, "60-64 ans": 6.2, "65+ ans": 18.2, "75+ ans": 9.2},
+            {Année: 2015, "0-19 ans": 24.3, "0-14 ans": 18.3, "20-59 ans": 50.9, "60-64 ans": 6.2, "65+ ans": 18.6, "75+ ans": 9.3},
+            {Année: 2016, "0-19 ans": 24.3, "0-14 ans": 18.2, "20-59 ans": 50.5, "60-64 ans": 6.1, "65+ ans": 19.1, "75+ ans": 9.3},
+            {Année: 2017, "0-19 ans": 24.2, "0-14 ans": 18.1, "20-59 ans": 50.2, "60-64 ans": 6.1, "65+ ans": 19.5, "75+ ans": 9.3},
+            {Année: 2018, "0-19 ans": 24.1, "0-14 ans": 18.0, "20-59 ans": 49.9, "60-64 ans": 6.1, "65+ ans": 19.9, "75+ ans": 9.4},
+            {Année: 2019, "0-19 ans": 23.9, "0-14 ans": 17.8, "20-59 ans": 49.8, "60-64 ans": 6.1, "65+ ans": 20.2, "75+ ans": 9.4},
+            {Année: 2020, "0-19 ans": 23.8, "0-14 ans": 17.6, "20-59 ans": 49.5, "60-64 ans": 6.1, "65+ ans": 20.6, "75+ ans": 9.5},
+            {Année: 2021, "0-19 ans": 23.5, "0-14 ans": 17.4, "20-59 ans": 49.5, "60-64 ans": 6.1, "65+ ans": 20.9, "75+ ans": 9.5},
+            {Année: 2022, "0-19 ans": 23.4, "0-14 ans": 17.2, "20-59 ans": 49.2, "60-64 ans": 6.2, "65+ ans": 21.2, "75+ ans": 9.8},
+            {Année: 2023, "0-19 ans": 23.2, "0-14 ans": 17.0, "20-59 ans": 49.2, "60-64 ans": 6.2, "65+ ans": 21.4, "75+ ans": 10.2},
+            {Année: 2024, "0-19 ans": 23.0, "0-14 ans": 16.8, "20-59 ans": 49.0, "60-64 ans": 6.2, "65+ ans": 21.8, "75+ ans": 10.5}
+        ];
+
+        // Variables globales
+        let franceCharts = {};
+        let pacaCharts = {};
+        let demographieCharts = {};
+        let selectedFranceRegion = null;
+        let selectedPacaRegion = null;
+        let selectedDemographieYear = null;
+
+        // Fonctions utilitaires
+        function formatNumber(num) {
+            if (num === null) return "N/A";
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+
+        function getFranceMetricLabel(metric) {
+            const labels = {
+                PTOT: "Population Totale",
+                PMUN: "Population Municipale",
+                NBARR: "Nombre d'Arrondissements",
+                NBCAN: "Nombre de Cantons",
+                NBCOM: "Nombre de Communes"
+            };
+            return labels[metric];
+        }
+
+        function getPacaMetricLabel(metric) {
+            const labels = {
+                pop_municipale: "Population Municipale",
+                pop_totale: "Population Totale",
+                pop_ville: "Population (Ville Centre)",
+                communes: "Nombre de Communes",
+                densite: "Densité (hab/km²)"
+            };
+            return labels[metric];
+        }
+
+        function getDemographieMetricLabel(metric) {
+            const labels = {
+                population: "Population totale",
+                naissances: "Naissances",
+                deces: "Décès",
+                solde_naturel: "Solde naturel",
+                solde_migratoire: "Solde migratoire"
+            };
+            return labels[metric];
+        }
+
+        // Initialisation des onglets
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Désactiver tous les onglets
+                    tabs.forEach(t => t.classList.remove('active'));
+                    // Activer l'onglet cliqué
+                    this.classList.add('active');
+                    
+                    // Masquer tous les contenus
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Afficher le contenu correspondant
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-content`).classList.add('active');
+                    
+                    // Initialiser les graphiques si c'est l'onglet indicateurs
+                    if (tabId === 'indicateurs') {
+                        initIndicateursCharts();
+                    }
+                });
+            });
+        }
+
+        // Initialisation France
+        function initFranceCharts() {
+            const metric = document.getElementById('france-metric-selector').value;
+            const sortOrder = document.querySelector('input[name="france-sort"]:checked').value;
+            
+            let sortedData = [...franceData];
+            if (sortOrder === 'asc') {
+                sortedData.sort((a, b) => a[metric] - b[metric]);
+            } else if (sortOrder === 'desc') {
+                sortedData.sort((a, b) => b[metric] - a[metric]);
+            }
+            // Si 'original', on garde l'ordre original
+
+            // Bar chart
+            Plotly.newPlot('france-bar-chart', [{
+                x: sortedData.map(d => d.Région),
+                y: sortedData.map(d => d[metric]),
+                type: 'bar',
+                marker: { 
+                    color: sortedData.map(d => d[metric]), 
+                    colorscale: 'Viridis',
+                    cmin: Math.min(...franceData.map(d => d[metric])),
+                    cmax: Math.max(...franceData.map(d => d[metric]))
+                },
+                customdata: sortedData.map(d => d.REG)
+            }], {
+                title: `${getFranceMetricLabel(metric)} par Région`,
+                yaxis: { title: getFranceMetricLabel(metric) },
+                margin: { t: 40, l: 60, r: 40, b: 100 }
+            });
+
+            // Map
+            Plotly.newPlot('france-map', [{
+                type: 'scattermapbox',
+                lat: franceData.map(d => d.lat),
+                lon: franceData.map(d => d.lon),
+                text: franceData.map(d => d.Région),
+                customdata: franceData.map(d => d.REG),
+                marker: {
+                    size: franceData.map(d => Math.sqrt(d.PMUN) / 20),
+                    color: franceData.map(d => d.PMUN),
+                    colorscale: 'Viridis',
+                    opacity: 0.8,
+                    cmin: Math.min(...franceData.map(d => d.PMUN)),
+                    cmax: Math.max(...franceData.map(d => d.PMUN))
+                }
+            }], {
+                mapbox: { style: 'open-street-map', center: { lat: 46.603354, lon: 1.888334 }, zoom: 5 },
+                margin: { t: 40, l: 0, r: 0, b: 0 }
+            });
+
+            // Pie chart
+            Plotly.newPlot('france-pie-chart', [{
+                labels: franceData.map(d => d.Région),
+                values: franceData.map(d => d.PMUN),
+                type: 'pie',
+                textinfo: 'percent+label',
+                customdata: franceData.map(d => d.REG)
+            }], {
+                title: 'Répartition de la Population Municipale',
+                margin: { t: 40 }
+            });
+
+            // Scatter plot
+            Plotly.newPlot('france-scatter-plot', [{
+                x: franceData.map(d => d.NBCOM),
+                y: franceData.map(d => d.PMUN),
+                text: franceData.map(d => d.Région),
+                customdata: franceData.map(d => d.REG),
+                mode: 'markers',
+                marker: {
+                    size: franceData.map(d => Math.sqrt(d.PTOT) / 20),
+                    color: franceData.map(d => d.PTOT),
+                    colorscale: 'Viridis',
+                    opacity: 0.8,
+                    cmin: Math.min(...franceData.map(d => d.PTOT)),
+                    cmax: Math.max(...franceData.map(d => d.PTOT))
+                }
+            }], {
+                title: 'Relation entre Nombre de Communes et Population',
+                xaxis: { title: 'Nombre de communes' },
+                yaxis: { title: 'Population municipale' },
+                margin: { t: 40, l: 60, r: 40, b: 60 }
+            });
+
+            // Tableau de données
+            updateFranceTable(sortedData);
+
+            franceCharts = {
+                bar: document.getElementById('france-bar-chart'),
+                map: document.getElementById('france-map'),
+                pie: document.getElementById('france-pie-chart'),
+                scatter: document.getElementById('france-scatter-plot')
+            };
+
+            addFranceChartEventListeners();
+        }
+
+        // Mise à jour du tableau France
+        function updateFranceTable(data) {
+            const tableBody = document.querySelector('#france-table tbody');
+            tableBody.innerHTML = '';
+            
+            data.forEach(region => {
+                const row = document.createElement('tr');
+                row.dataset.reg = region.REG;
+                if (selectedFranceRegion === region.REG) {
+                    row.classList.add('selected');
+                }
+                
+                row.innerHTML = `
+                    <td>${region.Région}</td>
+                    <td>${region.REG}</td>
+                    <td>${region.NBARR}</td>
+                    <td>${region.NBCAN}</td>
+                    <td>${formatNumber(region.NBCOM)}</td>
+                    <td>${formatNumber(region.PMUN)}</td>
+                    <td>${formatNumber(region.PTOT)}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    highlightFranceRegion(region.REG);
+                });
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initialisation PACA
+        function initPacaCharts() {
+            const metric = document.getElementById('paca-metric-selector').value;
+            const sortOrder = document.querySelector('input[name="paca-sort"]:checked').value;
+            
+            let sortedData = [...pacaData];
+            if (sortOrder === 'asc') {
+                sortedData.sort((a, b) => a[metric] - b[metric]);
+            } else if (sortOrder === 'desc') {
+                sortedData.sort((a, b) => b[metric] - a[metric]);
+            }
+            // Si 'original', on garde l'ordre original
+
+            // Bar chart
+            Plotly.newPlot('paca-bar-chart', [{
+                x: sortedData.map(d => d.nom),
+                y: sortedData.map(d => d[metric]),
+                type: 'bar',
+                marker: { 
+                    color: sortedData.map(d => d[metric]), 
+                    colorscale: 'Viridis',
+                    cmin: Math.min(...pacaData.map(d => d[metric])),
+                    cmax: Math.max(...pacaData.map(d => d[metric]))
+                },
+                customdata: sortedData.map(d => d.nom)
+            }], {
+                title: `${getPacaMetricLabel(metric)} par Arrondissement`,
+                yaxis: { title: getPacaMetricLabel(metric) },
+                margin: { t: 40, l: 60, r: 40, b: 100 }
+            });
+
+            // Map
+            Plotly.newPlot('paca-map', [{
+                type: 'scattermapbox',
+                lat: pacaData.map(d => d.lat),
+                lon: pacaData.map(d => d.lon),
+                text: pacaData.map(d => d.nom),
+                customdata: pacaData.map(d => d.nom),
+                marker: {
+                    size: pacaData.map(d => Math.sqrt(d.pop_municipale) / 10),
+                    color: pacaData.map(d => d.pop_municipale),
+                    colorscale: 'Viridis',
+                    opacity: 0.8,
+                    cmin: Math.min(...pacaData.map(d => d.pop_municipale)),
+                    cmax: Math.max(...pacaData.map(d => d.pop_municipale))
+                }
+            }], {
+                mapbox: { style: 'open-street-map', center: { lat: 43.9, lon: 6.1 }, zoom: 7 },
+                margin: { t: 40, l: 0, r: 0, b: 0 }
+            });
+
+            // Pie chart
+            Plotly.newPlot('paca-pie-chart', [{
+                labels: pacaData.map(d => d.nom),
+                values: pacaData.map(d => d.pop_municipale),
+                type: 'pie',
+                textinfo: 'percent+label',
+                customdata: pacaData.map(d => d.nom)
+            }], {
+                title: 'Répartition de la Population Municipale',
+                margin: { t: 40 }
+            });
+
+            // Scatter plot
+            Plotly.newPlot('paca-scatter-plot', [{
+                x: pacaData.map(d => d.communes),
+                y: pacaData.map(d => d.pop_municipale),
+                text: pacaData.map(d => d.nom),
+                customdata: pacaData.map(d => d.nom),
+                mode: 'markers',
+                marker: {
+                    size: pacaData.map(d => Math.sqrt(d.pop_ville) / 5),
+                    color: pacaData.map(d => d.densite),
+                    colorscale: 'Viridis',
+                    opacity: 0.8
+                }
+            }], {
+                title: 'Relation entre Nombre de Communes et Population',
+                xaxis: { title: 'Nombre de communes' },
+                yaxis: { title: 'Population municipale' },
+                margin: { t: 40, l: 60, r: 40, b: 60 }
+            });
+
+            // Tableau de données
+            updatePacaTable(sortedData);
+
+            pacaCharts = {
+                bar: document.getElementById('paca-bar-chart'),
+                map: document.getElementById('paca-map'),
+                pie: document.getElementById('paca-pie-chart'),
+                scatter: document.getElementById('paca-scatter-plot')
+            };
+
+            addPacaChartEventListeners();
+        }
+
+        // Mise à jour du tableau PACA
+        function updatePacaTable(data) {
+            const tableBody = document.querySelector('#paca-table tbody');
+            tableBody.innerHTML = '';
+            
+            data.forEach(arrondissement => {
+                const row = document.createElement('tr');
+                row.dataset.nom = arrondissement.nom;
+                if (selectedPacaRegion === arrondissement.nom) {
+                    row.classList.add('selected');
+                }
+                
+                row.innerHTML = `
+                    <td>${arrondissement.nom}</td>
+                    <td>${arrondissement.communes}</td>
+                    <td>${formatNumber(arrondissement.pop_municipale)}</td>
+                    <td>${formatNumber(arrondissement.pop_totale)}</td>
+                    <td>${formatNumber(arrondissement.pop_ville)}</td>
+                    <td>${formatNumber(Math.round(arrondissement.densite))}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    highlightPacaRegion(arrondissement.nom);
+                });
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initialisation Démographie
+        function initDemographieCharts() {
+            const metric = document.getElementById('demographie-metric-selector').value;
+            const chartType = document.querySelector('input[name="demographie-type"]:checked').value;
+            
+            // Main chart
+            const mainChartData = {
+                population: { y: demographieData.map(d => d.Population), title: "Évolution de la population française", ytitle: "Population" },
+                naissances: { y: demographieData.map(d => d.Naissances), title: "Évolution des naissances", ytitle: "Nombre de naissances" },
+                deces: { y: demographieData.map(d => d.Décès), title: "Évolution des décès", ytitle: "Nombre de décès" },
+                solde_naturel: { y: demographieData.map(d => d.SoldeNaturel), title: "Évolution du solde naturel", ytitle: "Solde naturel" },
+                solde_migratoire: { y: demographieData.map(d => d.SoldeMigratoire), title: "Évolution du solde migratoire", ytitle: "Solde migratoire" }
+            };
+
+            Plotly.newPlot('demographie-main-chart', [{
+                x: demographieData.map(d => d.Année),
+                y: mainChartData[metric].y,
+                type: chartType,
+                name: getDemographieMetricLabel(metric),
+                marker: { color: '#1f77b4' }
+            }], {
+                title: mainChartData[metric].title,
+                xaxis: { title: "Année" },
+                yaxis: { title: mainChartData[metric].ytitle },
+                margin: { t: 40, l: 60, r: 40, b: 60 }
+            });
+
+            // Comparison chart
+            Plotly.newPlot('demographie-comparison-chart', [{
+                x: demographieData.map(d => d.Année),
+                y: demographieData.map(d => d.Naissances),
+                type: 'line',
+                name: 'Naissances',
+                marker: { color: '#2ca02c' }
+            }, {
+                x: demographieData.map(d => d.Année),
+                y: demographieData.map(d => d.Décès),
+                type: 'line',
+                name: 'Décès',
+                marker: { color: '#d62728' }
+            }], {
+                title: "Comparaison naissances/décès",
+                xaxis: { title: "Année" },
+                yaxis: { title: "Nombre" },
+                margin: { t: 40, l: 60, r: 40, b: 60 }
+            });
+
+            // Stacked chart
+            Plotly.newPlot('demographie-stacked-chart', [{
+                x: demographieData.map(d => d.Année),
+                y: demographieData.map(d => d.SoldeNaturel),
+                type: 'bar',
+                name: 'Solde naturel',
+                marker: { color: '#9467bd' }
+            }, {
+                x: demographieData.map(d => d.Année),
+                y: demographieData.map(d => d.SoldeMigratoire),
+                type: 'bar',
+                name: 'Solde migratoire',
+                marker: { color: '#8c564b' }
+            }], {
+                title: "Composantes de la croissance démographique",
+                xaxis: { title: "Année" },
+                yaxis: { title: "Nombre" },
+                barmode: 'stack',
+                margin: { t: 40, l: 60, r: 40, b: 60 }
+            });
+
+            // Tableau de données
+            updateDemographieTable();
+
+            demographieCharts = {
+                main: document.getElementById('demographie-main-chart'),
+                comparison: document.getElementById('demographie-comparison-chart'),
+                stacked: document.getElementById('demographie-stacked-chart')
+            };
+
+            // Ajout des écouteurs d'événements
+            document.getElementById('demographie-main-chart').on('plotly_click', function(event) {
+                if (event.points && event.points[0]) {
+                    const year = event.points[0].x;
+                    highlightDemographieYear(year);
+                }
+            });
+        }
+
+        // Mise à jour du tableau Démographie
+        function updateDemographieTable() {
+            const tableBody = document.querySelector('#demographie-table tbody');
+            tableBody.innerHTML = '';
+            
+            demographieData.forEach(data => {
+                const row = document.createElement('tr');
+                row.dataset.year = data.Année;
+                if (selectedDemographieYear === data.Année) {
+                    row.classList.add('selected');
+                }
+                
+                row.innerHTML = `
+                    <td>${data.Année}</td>
+                    <td>${formatNumber(data.Population)}</td>
+                    <td>${formatNumber(data.Naissances)}</td>
+                    <td>${formatNumber(data.Décès)}</td>
+                    <td>${formatNumber(data.SoldeNaturel)}</td>
+                    <td>${formatNumber(data.SoldeMigratoire)}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    highlightDemographieYear(data.Année);
+                });
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Initialisation des indicateurs démographiques
+        function initIndicateursCharts() {
+            const metric = document.getElementById('indicateurs-metric-selector').value;
+            const chartType = document.querySelector('input[name="indicateurs-type"]:checked').value;
+            
+            // Effacer les graphiques précédents
+            document.getElementById('indicateurs-main-chart').innerHTML = '';
+            document.getElementById('indicateurs-secondary-chart').innerHTML = '';
+            document.getElementById('indicateurs-stacked-chart').innerHTML = '';
+            
+            if (metric === 'taux') {
+                // Graphique principal - Évolution des taux
+                Plotly.newPlot('indicateurs-main-chart', [
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => d["Taux de natalité"]),
+                        name: 'Taux de natalité',
+                        type: chartType,
+                        marker: { color: '#1f77b4' }
+                    },
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => d["Taux de mortalité"]),
+                        name: 'Taux de mortalité',
+                        type: chartType,
+                        marker: { color: '#d62728' }
+                    },
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => d["Taux de nuptialité"]),
+                        name: 'Taux de nuptialité',
+                        type: chartType,
+                        marker: { color: '#2ca02c' }
+                    }
+                ], {
+                    title: 'Évolution des principaux taux démographiques',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Taux (pour 1000 habitants)' },
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+                // Graphique secondaire - Taux de variation naturelle
+                Plotly.newPlot('indicateurs-secondary-chart', [{
+                    x: tauxData.map(d => d.Année),
+                    y: tauxData.map(d => d["Taux de variation naturelle"]),
+                    type: chartType,
+                    marker: { color: '#9467bd' }
+                }], {
+                    title: 'Taux de variation naturelle',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Taux (pour 1000 habitants)' },
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+                // Graphique empilé - Comparaison natalité/mortalité
+                Plotly.newPlot('indicateurs-stacked-chart', [
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => d["Taux de natalité"]),
+                        name: 'Natalité',
+                        type: 'bar',
+                        marker: { color: '#1f77b4' }
+                    },
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => -d["Taux de mortalité"]),
+                        name: 'Mortalité',
+                        type: 'bar',
+                        marker: { color: '#d62728' }
+                    }
+                ], {
+                    title: 'Comparaison natalité/mortalité',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Taux (pour 1000 habitants)' },
+                    barmode: 'relative',
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+            } else if (metric === 'repartition') {
+                // Graphique principal - Évolution de la répartition par âge
+                Plotly.newPlot('indicateurs-main-chart', [
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["0-19 ans"]),
+                        name: '0-19 ans',
+                        type: chartType,
+                        marker: { color: '#1f77b4' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["20-59 ans"]),
+                        name: '20-59 ans',
+                        type: chartType,
+                        marker: { color: '#ff7f0e' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["60-64 ans"]),
+                        name: '60-64 ans',
+                        type: chartType,
+                        marker: { color: '#2ca02c' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["65+ ans"]),
+                        name: '65+ ans',
+                        type: chartType,
+                        marker: { color: '#d62728' }
+                    }
+                ], {
+                    title: 'Évolution de la répartition par tranche d\'âge',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Pourcentage de la population' },
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+                // Graphique secondaire - Détail jeunes
+                Plotly.newPlot('indicateurs-secondary-chart', [
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["0-14 ans"]),
+                        name: '0-14 ans',
+                        type: chartType,
+                        marker: { color: '#1f77b4' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["0-19 ans"]),
+                        name: '0-19 ans',
+                        type: chartType,
+                        marker: { color: '#aec7e8' }
+                    }
+                ], {
+                    title: 'Évolution des jeunes (0-14 et 0-19 ans)',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Pourcentage de la population' },
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+                // Graphique empilé - Détail seniors
+                Plotly.newPlot('indicateurs-stacked-chart', [
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["65+ ans"] - d["75+ ans"]),
+                        name: '65-74 ans',
+                        type: 'bar',
+                        marker: { color: '#d62728' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["75+ ans"]),
+                        name: '75+ ans',
+                        type: 'bar',
+                        marker: { color: '#9467bd' }
+                    }
+                ], {
+                    title: 'Évolution des populations âgées',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Pourcentage de la population' },
+                    barmode: 'stack',
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+            } else if (metric === 'comparaison') {
+                // Graphique principal - Comparaison des taux
+                Plotly.newPlot('indicateurs-main-chart', [
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => d["Taux de natalité"] / d["Taux de mortalité"]),
+                        name: 'Ratio natalité/mortalité',
+                        type: chartType,
+                        marker: { color: '#1f77b4' }
+                    },
+                    {
+                        x: tauxData.map(d => d.Année),
+                        y: tauxData.map(d => d["Taux de nuptialité"] / d["Taux de natalité"] * 100),
+                        name: 'Nuptialité/Natalité (%)',
+                        type: chartType,
+                        marker: { color: '#ff7f0e' }
+                    }
+                ], {
+                    title: 'Comparaison des indicateurs démographiques',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Ratio' },
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+                
+                // Graphique secondaire - Pyramide des âges pour la dernière année
+                const lastYear = repartitionData[repartitionData.length - 1];
+                Plotly.newPlot('indicateurs-secondary-chart', [
+                    {
+                        x: [lastYear["0-19 ans"], lastYear["20-59 ans"], lastYear["60-64 ans"], lastYear["65+ ans"]],
+                        y: ['0-19 ans', '20-59 ans', '60-64 ans', '65+ ans'],
+                        type: 'bar',
+                        orientation: 'h',
+                        name: 'Répartition 2024',
+                        marker: { color: '#1f77b4' }
+                    }
+                ], {
+                    title: 'Répartition par âge en 2024',
+                    xaxis: { title: 'Pourcentage de la population' },
+                    margin: { t: 40, l: 100, r: 40, b: 60 }
+                });
+                
+                // Graphique empilé - Évolution des groupes d'âge
+                Plotly.newPlot('indicateurs-stacked-chart', [
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["0-19 ans"]),
+                        name: '0-19 ans',
+                        type: 'bar',
+                        marker: { color: '#1f77b4' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["20-59 ans"]),
+                        name: '20-59 ans',
+                        type: 'bar',
+                        marker: { color: '#ff7f0e' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["60-64 ans"]),
+                        name: '60-64 ans',
+                        type: 'bar',
+                        marker: { color: '#2ca02c' }
+                    },
+                    {
+                        x: repartitionData.map(d => d.Année),
+                        y: repartitionData.map(d => d["65+ ans"]),
+                        name: '65+ ans',
+                        type: 'bar',
+                        marker: { color: '#d62728' }
+                    }
+                ], {
+                    title: 'Évolution des groupes d\'âge',
+                    xaxis: { title: 'Année' },
+                    yaxis: { title: 'Pourcentage de la population' },
+                    barmode: 'stack',
+                    margin: { t: 40, l: 60, r: 40, b: 60 }
+                });
+            }
+            
+            // Tableau de données
+            updateIndicateursTable();
+            
+            // Ajout des écouteurs d'événements
+            document.getElementById('indicateurs-main-chart').on('plotly_click', function(event) {
+                if (event.points && event.points[0]) {
+                    const year = event.points[0].x;
+                    highlightIndicateursYear(year);
+                }
+            });
+        }
+
+        // Mise à jour du tableau Indicateurs
+        function updateIndicateursTable() {
+            const tableBody = document.querySelector('#indicateurs-table tbody');
+            tableBody.innerHTML = '';
+            
+            tauxData.forEach((taux, index) => {
+                const repartition = repartitionData[index];
+                const row = document.createElement('tr');
+                row.dataset.year = taux.Année;
+                
+                row.innerHTML = `
+                    <td>${taux.Année}</td>
+                    <td>${taux["Taux de natalité"]}</td>
+                    <td>${taux["Taux de mortalité"]}</td>
+                    <td>${taux["Taux de nuptialité"]}</td>
+                    <td>${repartition["0-19 ans"]}</td>
+                    <td>${repartition["20-59 ans"]}</td>
+                    <td>${repartition["60-64 ans"]}</td>
+                    <td>${repartition["65+ ans"]}</td>
+                `;
+                
+                row.addEventListener('click', () => {
+                    highlightIndicateursYear(taux.Année);
+                });
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Mise à jour des graphiques indicateurs
+        function updateIndicateursCharts() {
+            initIndicateursCharts();
+        }
+
+        // Événements France
+        function addFranceChartEventListeners() {
+            Object.values(franceCharts).forEach(chart => {
+                chart.on('plotly_click', function(event) {
+                    if (event.points && event.points[0]) {
+                        const regCode = event.points[0].customdata;
+                        highlightFranceRegion(regCode);
+                    }
+                });
+            });
+        }
+
+        function highlightFranceRegion(regCode) {
+            selectedFranceRegion = regCode;
+            
+            // Mise à jour des graphiques
+            updateFranceCharts();
+            
+            // Mise à jour du tableau
+            updateFranceTable(franceData);
+            
+            // Affichage des détails
+            showFranceRegionDetails(regCode);
+        }
+
+        function showFranceRegionDetails(regCode) {
+            const region = franceData.find(d => d.REG === regCode);
+            if (!region) return;
+            
+            const details = `
+                <p><strong>${region.Région}</strong> (Code: ${region.REG})</p>
+                <p>Arrondissements: ${region.NBARR}</p>
+                <p>Cantons: ${region.NBCAN}</p>
+                <p>Communes: ${formatNumber(region.NBCOM)}</p>
+                <p>Population Municipale: ${formatNumber(region.PMUN)}</p>
+                <p>Population Totale: ${formatNumber(region.PTOT)}</p>
+            `;
+            
+            document.getElementById('france-region-content').innerHTML = details;
+            document.getElementById('france-region-details').style.display = 'block';
+        }
+
+        function updateFranceCharts() {
+            const metric = document.getElementById('france-metric-selector').value;
+            const sortOrder = document.querySelector('input[name="france-sort"]:checked').value;
+            
+            let sortedData = [...franceData];
+            if (sortOrder === 'asc') {
+                sortedData.sort((a, b) => a[metric] - b[metric]);
+            } else if (sortOrder === 'desc') {
+                sortedData.sort((a, b) => b[metric] - a[metric]);
+            }
+
+            // Bar chart
+            Plotly.restyle('france-bar-chart', {
+                'x': [sortedData.map(d => d.Région)],
+                'y': [sortedData.map(d => d[metric])],
+                'marker.color': [sortedData.map(d => d.REG === selectedFranceRegion ? '#FF4136' : d[metric])]
+            });
+
+            // Map
+            Plotly.restyle('france-map', {
+                'marker.color': [franceData.map(d => d.REG === selectedFranceRegion ? '#FF4136' : d.PMUN)],
+                'marker.size': [franceData.map(d => Math.sqrt(d.PMUN) / (d.REG === selectedFranceRegion ? 10 : 20))]
+            });
+
+            // Pie chart
+            Plotly.restyle('france-pie-chart', {
+                'pull': [franceData.map(d => d.REG === selectedFranceRegion ? 0.1 : 0)]
+            });
+
+            // Scatter plot
+            Plotly.restyle('france-scatter-plot', {
+                'marker.size': [franceData.map(d => Math.sqrt(d.PTOT) / (d.REG === selectedFranceRegion ? 10 : 20))],
+                'marker.color': [franceData.map(d => d.REG === selectedFranceRegion ? '#FF4136' : d.PTOT)]
+            });
+        }
+
+        // Événements PACA
+        function addPacaChartEventListeners() {
+            Object.values(pacaCharts).forEach(chart => {
+                chart.on('plotly_click', function(event) {
+                    if (event.points && event.points[0]) {
+                        const name = event.points[0].customdata;
+                        highlightPacaRegion(name);
+                    }
+                });
+            });
+        }
+
+        function highlightPacaRegion(name) {
+            selectedPacaRegion = name;
+            
+            // Mise à jour des graphiques
+            updatePacaCharts();
+            
+            // Mise à jour du tableau
+            updatePacaTable(pacaData);
+            
+            // Affichage des détails
+            showPacaRegionDetails(name);
+        }
+
+        function showPacaRegionDetails(name) {
+            const region = pacaData.find(d => d.nom === name);
+            if (!region) return;
+            
+            const details = `
+                <p><strong>${region.nom}</strong></p>
+                <p>Communes: ${region.communes}</p>
+                <p>Population Municipale: ${formatNumber(region.pop_municipale)}</p>
+                <p>Population Totale: ${formatNumber(region.pop_totale)}</p>
+                <p>Population Ville Centre: ${formatNumber(region.pop_ville)}</p>
+                <p>Densité: ${formatNumber(Math.round(region.densite))} hab/km²</p>
+            `;
+            
+            document.getElementById('paca-region-content').innerHTML = details;
+            document.getElementById('paca-region-details').style.display = 'block';
+        }
+
+        function updatePacaCharts() {
+            const metric = document.getElementById('paca-metric-selector').value;
+            const sortOrder = document.querySelector('input[name="paca-sort"]:checked').value;
+            
+            let sortedData = [...pacaData];
+            if (sortOrder === 'asc') {
+                sortedData.sort((a, b) => a[metric] - b[metric]);
+            } else if (sortOrder === 'desc') {
+                sortedData.sort((a, b) => b[metric] - a[metric]);
+            }
+
+            // Bar chart
+            Plotly.restyle('paca-bar-chart', {
+                'x': [sortedData.map(d => d.nom)],
+                'y': [sortedData.map(d => d[metric])],
+                'marker.color': [sortedData.map(d => d.nom === selectedPacaRegion ? '#FF4136' : d[metric])]
+            });
+
+            // Map
+            Plotly.restyle('paca-map', {
+                'marker.color': [pacaData.map(d => d.nom === selectedPacaRegion ? '#FF4136' : d.pop_municipale)],
+                'marker.size': [pacaData.map(d => Math.sqrt(d.pop_municipale) / (d.nom === selectedPacaRegion ? 5 : 10))]
+            });
+
+            // Pie chart
+            Plotly.restyle('paca-pie-chart', {
+                'pull': [pacaData.map(d => d.nom === selectedPacaRegion ? 0.1 : 0)]
+            });
+
+            // Scatter plot
+            Plotly.restyle('paca-scatter-plot', {
+                'marker.size': [pacaData.map(d => Math.sqrt(d.pop_ville) / (d.nom === selectedPacaRegion ? 3 : 5))],
+                'marker.color': [pacaData.map(d => d.nom === selectedPacaRegion ? '#FF4136' : d.densite)]
+            });
+        }
+
+        // Événements Démographie
+        function highlightDemographieYear(year) {
+            selectedDemographieYear = year;
+            
+            // Mise à jour du tableau
+            updateDemographieTable();
+            
+            // Mise en évidence dans les graphiques
+            highlightYearInChart('demographie-main-chart', year);
+            highlightYearInChart('demographie-comparison-chart', year);
+            highlightYearInChart('demographie-stacked-chart', year);
+        }
+
+        function highlightYearInChart(chartId, year) {
+            const chart = document.getElementById(chartId);
+            const data = chart.data;
+            
+            // Créer une nouvelle trace pour le point mis en évidence
+            const highlightTrace = {
+                x: [year],
+                y: [0], // La valeur sera mise à jour plus bas
+                mode: 'markers',
+                marker: {
+                    size: 12,
+                    color: '#FF4136'
+                },
+                showlegend: false
+            };
+            
+            // Trouver la valeur y correspondant à l'année sélectionnée
+            for (let i = 0; i < data.length; i++) {
+                const xValues = data[i].x;
+                const yValues = data[i].y;
+                const index = xValues.indexOf(year);
+                
+                if (index !== -1) {
+                    highlightTrace.y = [yValues[index]];
+                    break;
+                }
+            }
+            
+            // Ajouter la trace de mise en évidence
+            Plotly.addTraces(chartId, highlightTrace);
+            
+            // Supprimer les anciennes traces de mise en évidence
+            setTimeout(() => {
+                const chart = document.getElementById(chartId);
+                const tracesToRemove = [];
+                
+                // Trouver les indices des traces de mise en évidence (celles avec showlegend: false)
+                for (let i = 0; i < chart.data.length; i++) {
+                    if (chart.data[i].showlegend === false) {
+                        tracesToRemove.push(i);
+                    }
+                }
+                
+                // Garder seulement la dernière trace de mise en évidence
+                if (tracesToRemove.length > 1) {
+                    Plotly.deleteTraces(chartId, tracesToRemove.slice(0, -1));
+                }
+            }, 0);
+        }
+
+        // Événements Indicateurs
+        function highlightIndicateursYear(year) {
+            // Mise en évidence dans les graphiques
+            highlightYearInChart('indicateurs-main-chart', year);
+            highlightYearInChart('indicateurs-secondary-chart', year);
+            highlightYearInChart('indicateurs-stacked-chart', year);
+            
+            // Mise en évidence dans le tableau
+            const rows = document.querySelectorAll('#indicateurs-table tbody tr');
+            rows.forEach(row => {
+                if (parseInt(row.dataset.year) === year) {
+                    row.classList.add('selected');
+                } else {
+                    row.classList.remove('selected');
+                }
+            });
+        }
+
+        function updateDemographieCharts() {
+            const metric = document.getElementById('demographie-metric-selector').value;
+            const chartType = document.querySelector('input[name="demographie-type"]:checked').value;
+            
+            // Main chart data
+            const mainChartData = {
+                population: { y: demographieData.map(d => d.Population), title: "Évolution de la population française", ytitle: "Population" },
+                naissances: { y: demographieData.map(d => d.Naissances), title: "Évolution des naissances", ytitle: "Nombre de naissances" },
+                deces: { y: demographieData.map(d => d.Décès), title: "Évolution des décès", ytitle: "Nombre de décès" },
+                solde_naturel: { y: demographieData.map(d => d.SoldeNaturel), title: "Évolution du solde naturel", ytitle: "Solde naturel" },
+                solde_migratoire: { y: demographieData.map(d => d.SoldeMigratoire), title: "Évolution du solde migratoire", ytitle: "Solde migratoire" }
+            };
+
+            Plotly.react('demographie-main-chart', [{
+                x: demographieData.map(d => d.Année),
+                y: mainChartData[metric].y,
+                type: chartType,
+                name: getDemographieMetricLabel(metric),
+                marker: { color: '#1f77b4' }
+            }], {
+                title: mainChartData[metric].title,
+                xaxis: { title: "Année" },
+                yaxis: { title: mainChartData[metric].ytitle },
+                margin: { t: 40, l: 60, r: 40, b: 60 }
+            });
+        }
+
+        // Écouteurs d'événements
+        document.getElementById('france-metric-selector').addEventListener('change', initFranceCharts);
+        document.querySelectorAll('input[name="france-sort"]').forEach(input => {
+            input.addEventListener('change', initFranceCharts);
+        });
+
+        document.getElementById('paca-metric-selector').addEventListener('change', initPacaCharts);
+        document.querySelectorAll('input[name="paca-sort"]').forEach(input => {
+            input.addEventListener('change', initPacaCharts);
+        });
+
+        document.getElementById('demographie-metric-selector').addEventListener('change', updateDemographieCharts);
+        document.querySelectorAll('input[name="demographie-type"]').forEach(input => {
+            input.addEventListener('change', updateDemographieCharts);
+        });
+
+        document.getElementById('indicateurs-metric-selector').addEventListener('change', updateIndicateursCharts);
+        document.querySelectorAll('input[name="indicateurs-type"]').forEach(input => {
+            input.addEventListener('change', updateIndicateursCharts);
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            initTabs();
+            initFranceCharts();
+            initPacaCharts();
+            initDemographieCharts();
+        });
+    </script>
+</body>
+</html>
